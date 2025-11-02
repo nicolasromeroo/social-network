@@ -77,11 +77,7 @@ Example Routes:
 
 Future Improvements:
 - Real-time notifications with Socket.io.
-
-Image upload and cloud storage integration.
-
-Social graph with followers/following system.
-
-Pagination and query filtering.
-
-Unit and integration test coverage.
+- Image upload and cloud storage integration.
+- Social graph with followers/following system.
+- Pagination and query filtering.
+- Unit and integration test coverage.
