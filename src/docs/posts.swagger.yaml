@@ -1,0 +1,390 @@
+openapi: 3.0.1
+info:
+  title: Posts API
+  description: API para la gestión de posts en la red social
+  version: "1.0.0"
+
+tags:
+  - name: Posts
+    description: Endpoints relacionados con la gestión de posts (crear, listar, dar like)
+  - name: Comments
+    description: Endpoints para gestionar comentarios en posts
+
+paths:
+  /posts/addPost/{uid}:
+    post:
+      tags:
+        - Posts
+      summary: Crear una nueva publicación
+      description: Crea un nuevo post para el usuario autenticado. El contenido puede ser público o privado.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: uid
+          required: true
+          schema:
+            type: string
+          description: ID del usuario que crea el post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  description: Contenido del post
+                  example: "¡Hola mundo! Este es mi primer post."
+                isPrivate:
+                  type: boolean
+                  description: Indica si el post es privado
+                  default: false
+                  example: false
+      responses:
+        '200':
+          description: Post creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Post creado con éxito"
+                  post:
+                    $ref: '#/components/schemas/Post'
+        '400':
+          description: Datos inválidos o faltantes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Para realizar un posteo al menos escriba una descripción"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /posts/all:
+    get:
+      tags:
+        - Posts
+      summary: Obtener todos mis posts
+      description: Recupera todos los posts del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de posts recuperada con éxito
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Post'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /posts/likedPost/{pid}:
+    post:
+      tags:
+        - Posts
+      summary: Dar/quitar like a un post
+      description: Alterna el like en un post. Si ya dio like lo quita, si no había dado like lo agrega.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: pid
+          required: true
+          schema:
+            type: string
+          description: ID del post al que se dará/quitará like
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  description: ID del usuario que da/quita el like
+      responses:
+        '200':
+          description: Like procesado correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Like agregado"
+                  likes:
+                    type: integer
+                    description: Número total de likes
+                    example: 42
+        '404':
+          description: Post no encontrado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /posts/comment/{pid}:
+    get:
+      tags:
+        - Comments
+      summary: Obtener comentarios de un post
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: pid
+          required: true
+          schema:
+            type: string
+          description: ID del post del cual obtener comentarios
+      responses:
+        '200':
+          description: Lista de comentarios del post
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      tags:
+        - Comments
+      summary: Agregar un comentario a un post
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: pid
+          required: true
+          schema:
+            type: string
+          description: ID del post a comentar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  description: Contenido del comentario
+                  example: "¡Gran publicación!"
+      responses:
+        '200':
+          description: Comentario agregado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Comentario publicado con éxito"
+                  comment:
+                    $ref: '#/components/schemas/Comment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /posts/updateComment/{id}:
+    put:
+      tags:
+        - Comments
+      summary: Actualizar un comentario
+      description: Actualiza el texto de un comentario. Solo permitido dentro de las primeras 12 horas.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: ID del comentario a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  description: Nuevo texto del comentario
+                  example: "Contenido actualizado del comentario"
+      responses:
+        '200':
+          description: Comentario actualizado con éxito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '403':
+          description: No permitido (más de 12 horas o no es el autor)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "No puedes editar el comentario después de 12 horas"
+        '404':
+          description: Comentario no encontrado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /posts/deleteComment/{id}:
+    delete:
+      tags:
+        - Comments
+      summary: Eliminar un comentario
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: ID del comentario a eliminar
+      responses:
+        '200':
+          description: Comentario eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Comentario eliminado con éxito"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  schemas:
+    Post:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        userId:
+          type: string
+          description: ID del usuario que creó el post
+          example: "507f1f77bcf86cd799439012"
+        text:
+          type: string
+          description: Contenido del post
+          example: "¡Hola mundo!"
+        image:
+          type: string
+          description: URL de la imagen (si existe)
+          example: "https://example.com/image.jpg"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-11-08T12:00:00Z"
+        likes:
+          type: array
+          items:
+            type: string
+          description: Array de IDs de usuarios que dieron like
+          example: ["507f1f77bcf86cd799439013", "507f1f77bcf86cd799439014"]
+        likesCount:
+          type: integer
+          description: Contador de likes
+          example: 42
+        isPrivate:
+          type: boolean
+          description: Indica si el post es privado
+          example: false
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+          description: Lista de comentarios en el post
+
+    Comment:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439015"
+        userId:
+          type: string
+          description: ID del usuario que comentó
+          example: "507f1f77bcf86cd799439016"
+        postId:
+          type: string
+          description: ID del post comentado
+          example: "507f1f77bcf86cd799439011"
+        text:
+          type: string
+          description: Contenido del comentario
+          example: "¡Excelente publicación!"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-11-08T12:05:00Z"
+
+  responses:
+    Unauthorized:
+      description: No autorizado - Token faltante o inválido
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: "Token no válido"
+
+    ServerError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: "Error interno del servidor"
+              err:
+                type: object
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
